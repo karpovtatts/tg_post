@@ -38,9 +38,9 @@ def upgrade() -> None:
                 new.id,
                 new.text,
                 new.normalized_text,
-                (SELECT GROUP_CONCAT(t.name, ' ') 
-                 FROM tags t 
-                 JOIN prompt_tags pt ON t.id = pt.tag_id 
+                (SELECT GROUP_CONCAT(t.name, ' ')
+                 FROM tags t
+                 JOIN prompt_tags pt ON t.id = pt.tag_id
                  WHERE pt.prompt_id = new.id)
             );
         END
@@ -52,9 +52,9 @@ def upgrade() -> None:
             UPDATE prompts_fts SET
                 text = new.text,
                 normalized_text = new.normalized_text,
-                tags = (SELECT GROUP_CONCAT(t.name, ' ') 
-                       FROM tags t 
-                       JOIN prompt_tags pt ON t.id = pt.tag_id 
+                tags = (SELECT GROUP_CONCAT(t.name, ' ')
+                       FROM tags t
+                       JOIN prompt_tags pt ON t.id = pt.tag_id
                        WHERE pt.prompt_id = new.id)
             WHERE rowid = new.id;
         END
@@ -71,9 +71,9 @@ def upgrade() -> None:
     op.execute("""
         CREATE TRIGGER IF NOT EXISTS prompts_fts_tags_update AFTER INSERT ON prompt_tags BEGIN
             UPDATE prompts_fts SET
-                tags = (SELECT GROUP_CONCAT(t.name, ' ') 
-                       FROM tags t 
-                       JOIN prompt_tags pt ON t.id = pt.tag_id 
+                tags = (SELECT GROUP_CONCAT(t.name, ' ')
+                       FROM tags t
+                       JOIN prompt_tags pt ON t.id = pt.tag_id
                        WHERE pt.prompt_id = new.prompt_id)
             WHERE prompt_id = new.prompt_id;
         END
@@ -83,9 +83,9 @@ def upgrade() -> None:
     op.execute("""
         CREATE TRIGGER IF NOT EXISTS prompts_fts_tags_delete AFTER DELETE ON prompt_tags BEGIN
             UPDATE prompts_fts SET
-                tags = (SELECT GROUP_CONCAT(t.name, ' ') 
-                       FROM tags t 
-                       JOIN prompt_tags pt ON t.id = pt.tag_id 
+                tags = (SELECT GROUP_CONCAT(t.name, ' ')
+                       FROM tags t
+                       JOIN prompt_tags pt ON t.id = pt.tag_id
                        WHERE pt.prompt_id = old.prompt_id)
             WHERE prompt_id = old.prompt_id;
         END
@@ -94,14 +94,14 @@ def upgrade() -> None:
     # Заполнение FTS5 существующими данными
     op.execute("""
         INSERT INTO prompts_fts(rowid, prompt_id, text, normalized_text, tags)
-        SELECT 
+        SELECT
             p.id,
             p.id,
             p.text,
             p.normalized_text,
-            COALESCE((SELECT GROUP_CONCAT(t.name, ' ') 
-                      FROM tags t 
-                      JOIN prompt_tags pt ON t.id = pt.tag_id 
+            COALESCE((SELECT GROUP_CONCAT(t.name, ' ')
+                      FROM tags t
+                      JOIN prompt_tags pt ON t.id = pt.tag_id
                       WHERE pt.prompt_id = p.id), '')
         FROM prompts p
         WHERE p.deleted_at IS NULL

@@ -17,6 +17,7 @@ __all__ = [
     "PromptUpdate",
     "PromptResponse",
     "PromptListResponse",
+    "PromptTagResponse",
     "TagBase",
     "TagCreate",
     "TagUpdate",

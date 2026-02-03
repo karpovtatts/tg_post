@@ -44,9 +44,9 @@ def init_fts5_table(db: Session) -> None:
                 new.id,
                 new.text,
                 new.normalized_text,
-                (SELECT GROUP_CONCAT(t.name, ' ') 
-                 FROM tags t 
-                 JOIN prompt_tags pt ON t.id = pt.tag_id 
+                (SELECT GROUP_CONCAT(t.name, ' ')
+                 FROM tags t
+                 JOIN prompt_tags pt ON t.id = pt.tag_id
                  WHERE pt.prompt_id = new.id)
             );
         END
@@ -60,9 +60,9 @@ def init_fts5_table(db: Session) -> None:
             UPDATE prompts_fts SET
                 text = new.text,
                 normalized_text = new.normalized_text,
-                tags = (SELECT GROUP_CONCAT(t.name, ' ') 
-                       FROM tags t 
-                       JOIN prompt_tags pt ON t.id = pt.tag_id 
+                tags = (SELECT GROUP_CONCAT(t.name, ' ')
+                       FROM tags t
+                       JOIN prompt_tags pt ON t.id = pt.tag_id
                        WHERE pt.prompt_id = new.id)
             WHERE rowid = new.id;
         END
@@ -83,9 +83,9 @@ def init_fts5_table(db: Session) -> None:
         text("""
         CREATE TRIGGER IF NOT EXISTS prompts_fts_tags_update AFTER INSERT ON prompt_tags BEGIN
             UPDATE prompts_fts SET
-                tags = (SELECT GROUP_CONCAT(t.name, ' ') 
-                       FROM tags t 
-                       JOIN prompt_tags pt ON t.id = pt.tag_id 
+                tags = (SELECT GROUP_CONCAT(t.name, ' ')
+                       FROM tags t
+                       JOIN prompt_tags pt ON t.id = pt.tag_id
                        WHERE pt.prompt_id = new.prompt_id)
             WHERE prompt_id = new.prompt_id;
         END
@@ -96,9 +96,9 @@ def init_fts5_table(db: Session) -> None:
         text("""
         CREATE TRIGGER IF NOT EXISTS prompts_fts_tags_delete AFTER DELETE ON prompt_tags BEGIN
             UPDATE prompts_fts SET
-                tags = (SELECT GROUP_CONCAT(t.name, ' ') 
-                       FROM tags t 
-                       JOIN prompt_tags pt ON t.id = pt.tag_id 
+                tags = (SELECT GROUP_CONCAT(t.name, ' ')
+                       FROM tags t
+                       JOIN prompt_tags pt ON t.id = pt.tag_id
                        WHERE pt.prompt_id = old.prompt_id)
             WHERE prompt_id = old.prompt_id;
         END
@@ -140,9 +140,9 @@ def search_fts5(
 
     # Базовый SQL для поиска
     base_sql = """
-        SELECT DISTINCT p.*, 
+        SELECT DISTINCT p.*,
                bm25(prompts_fts) as rank_score,
-               CASE 
+               CASE
                    WHEN prompts_fts.tags MATCH :tag_match THEN 100
                    WHEN prompts_fts.text MATCH :text_match THEN 50
                    ELSE 10

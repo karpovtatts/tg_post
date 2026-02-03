@@ -35,4 +35,5 @@ class Prompt(Base):
     )
 
     def __repr__(self):
-        return f"<Prompt(id={self.id}, tg_message_id={self.tg_message_id}, text_length={len(self.text) if self.text else 0})>"
+        text_len = len(self.text) if self.text else 0
+        return f"<Prompt(id={self.id}, tg_message_id={self.tg_message_id}, text_length={text_len})>"

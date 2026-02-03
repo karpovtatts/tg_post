@@ -6,28 +6,20 @@
 import asyncio
 import os
 import sys
-from typing import Optional
+from typing import List, Optional, Tuple
 
 # Добавление пути к приложению
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from telethon import TelegramClient
+from telethon.hints import Entity
 from telethon.tl.types import Message
 
 from app.core.config import settings
 from app.core.logging_config import get_logger, setup_logging
 from app.crud import prompt as crud_prompt
 from app.database import SessionLocal
-from app.schemas.prompt import PromptCreate
-
-# Для работы с Bot API
-try:
-    from aiogram import Bot
-    from aiogram.types import Message as BotMessage
-
-    AIOGRAM_AVAILABLE = True
-except ImportError:
-    AIOGRAM_AVAILABLE = False
+from app.schemas.prompt import PromptCreate, PromptUpdate
 
 # Настройка логирования
 setup_logging(level="INFO")
@@ -41,149 +33,128 @@ def extract_text_from_message(message: Message) -> Optional[str]:
     return None
 
 
-async def extract_image_url(client: TelegramClient, message: Message, channel_id: int) -> Optional[str]:
+async def extract_image_url(message: Message, channel_id: int) -> Optional[str]:
     """
     Извлечь URL изображения из сообщения через Telegram Bot API
-
-    Использует Bot API для получения file_path и формирования прямого URL к изображению.
-    Для работы нужен BOT_TOKEN в .env.
-
-    Алгоритм:
-    1. Пробуем получить file_id через forwardMessage (если бот в канале)
-    2. Используем getFile для получения file_path
-    3. Формируем URL: https://api.telegram.org/file/bot{token}/{file_path}
-
-    Если бот не в канале, используем альтернативный способ через прямую ссылку на пост.
-
-    Returns:
-        URL изображения через Telegram CDN или None
+    URL формируется через getFile и прямой доступ к CDN Telegram.
+    Это работает, только если бот имеет доступ к файлу (например, файл публичный).
     """
+    if not message.photo:
+        return None
+
+    # Проверяем наличие BOT_TOKEN
+    if not settings.bot_token or settings.bot_token == "your-telegram-bot-token":
+        return None
+
     try:
-        if message.photo:
-            logger.info(f"Найдено фото в сообщении {message.id}")
 
-            # Проверяем наличие BOT_TOKEN
-            if not settings.bot_token or settings.bot_token == "your-telegram-bot-token":
-                logger.debug(f"BOT_TOKEN не установлен, пропускаем изображение для сообщения {message.id}")
-                return None
+        # bot_api_url = f"https://api.telegram.org/bot{settings.bot_token}"
 
-            try:
+        # Получаем информацию о файле через Bot API
+        # Note: Это хак, так как мы не знаем file_id для бота (он отличается от Telethon API)
+        # Поэтому здесь мы пока просто логируем, что нужен другой подход
+        # Настоящее решение требует скачивания файла через Telethon и загрузки на S3/локально
 
-                import aiohttp
-
-                bot_api_url = f"https://api.telegram.org/bot{settings.bot_token}"
-
-                # Формируем channel_id для Bot API (формат -100...)
-                bot_channel_id = channel_id
-                if bot_channel_id > 0:
-                    bot_channel_id = -1000000000000 - bot_channel_id
-
-                # Пробуем получить file_id через forwardMessage
-                # Для этого пересылаем сообщение боту самому себе
-                async with aiohttp.ClientSession() as session:
-                    # Получаем информацию о боте
-                    get_me_url = f"{bot_api_url}/getMe"
-                    async with session.get(get_me_url) as response:
-                        if response.status != 200:
-                            logger.warning(f"Не удалось получить информацию о боте: {response.status}")
-                            return None
-
-                        bot_info = await response.json()
-                        if not bot_info.get("ok"):
-                            logger.warning("Бот не авторизован")
-                            return None
-
-                        bot_user_id = bot_info["result"]["id"]
-
-                    # Проблема: боты не могут отправлять сообщения другим ботам (ошибка: "Forbidden: bots can't send messages to bots")
-                    # Решение: используем информацию о файле из Telethon для скачивания и сохранения локально
-                    # Или используем copyMessage в приватный чат с пользователем (нужен chat_id)
-
-                    # Временное решение: возвращаем None
-                    # Для полной реализации нужно:
-                    # 1. Скачивать изображения через Telethon и сохранять локально (требует настройки сервера)
-                    # 2. Или использовать copyMessage в приватный чат с пользователем (нужен chat_id пользователя)
-                    # 3. Или получать сообщения через aiogram в реальном времени (только новые сообщения)
-
-                    logger.debug(f"Фото найдено в сообщении {message.id}, но URL не сформирован")
-                    logger.info(
-                        "Для получения изображений из старых сообщений нужен другой подход (скачивание через Telethon или copyMessage)"
-                    )
-
-                    return None
-
-                    # Альтернативный способ: формируем прямую ссылку на пост
-                    # Это не даст прямое изображение, но позволит открыть пост
-                    channel_id_str = str(abs(channel_id))
-                    if channel_id_str.startswith("100"):
-                        channel_id_str = channel_id_str[3:]
-
-                    post_url = f"https://t.me/c/{channel_id_str}/{message.id}"
-                    logger.debug(f"Сформирована ссылка на пост: {post_url}")
-                    # Возвращаем None, так как прямая ссылка не работает в <img>
-                    return None
-
-            except Exception as e:
-                logger.warning(f"Ошибка при получении URL для сообщения {message.id}: {e}")
-        else:
-            logger.debug(f"В сообщении {message.id} нет фото")
+        # В данный момент мы пропускаем генерацию URL, так как нет надежного способа
+        # получить file_id для Bot API, имея только message из Telethon,
+        # без пересылки сообщения боту.
+        return None
 
     except Exception as e:
-        logger.warning(f"Ошибка при извлечении изображения из сообщения {message.id}: {e}")
+        logger.warning(f"Ошибка при извлечении изображения: {e}")
+        return None
 
-    return None
+
+async def get_channel_entity(client: TelegramClient, channel_identifier: int | str) -> Optional[Entity]:
+    """Получить сущность канала"""
+    try:
+        entity = await client.get_entity(channel_identifier)
+        logger.info(f"Найден канал: {entity.title} (ID: {entity.id})")
+        return entity
+    except Exception as e:
+        logger.error(f"Не удалось найти канал {channel_identifier}: {e}")
+        return None
 
 
-async def sync_channel(limit: Optional[int] = None, offset_id: int = 0):
-    """
-    Синхронизировать сообщения из канала
-
-    Args:
-        limit: Максимальное количество сообщений для загрузки (None = все)
-        offset_id: ID сообщения, с которого начинать (для пагинации)
-    """
-    # Проверка настроек
-    if not settings.telegram_api_id or not settings.telegram_api_hash:
-        logger.error("TELEGRAM_API_ID и TELEGRAM_API_HASH должны быть установлены в .env")
-        logger.info("Получите их на https://my.telegram.org/apps")
-        return
-
-    if not settings.channel_id and not settings.channel_username:
-        logger.error("CHANNEL_ID или CHANNEL_USERNAME должны быть установлены в .env")
-        return
-
-    # Определение канала (приоритет у ID, если указан)
-    if settings.channel_id:
-        # Преобразуем ID в int для Telethon
-        try:
-            channel_identifier = int(settings.channel_id)
-        except ValueError:
-            logger.error(f"Неверный формат CHANNEL_ID: {settings.channel_id}")
-            return
-    else:
-        channel_identifier = settings.channel_username
-
-    # Создание клиента
-    client = TelegramClient("channel_sync_session", int(settings.telegram_api_id), settings.telegram_api_hash)
-
-    db = SessionLocal()
+async def process_messages(
+    db, client: TelegramClient, messages: List[Message], channel_id: int
+) -> Tuple[int, int]:
+    """Обработка списка сообщений"""
     created_count = 0
     skipped_count = 0
 
+    for message in messages:
+        text = extract_text_from_message(message)
+        if not text or len(text.strip()) < 1:
+            continue
+
+        # Определение закрепленного сообщения
+        is_pinned = getattr(message, "pinned", False)
+
+        # Извлечение изображения
+        image_url = await extract_image_url(message, channel_id)
+
+        # Проверка на существование
+        existing = crud_prompt.get_prompt_by_tg_message_id(db, message.id)
+        if existing:
+            # Обновляем, если появилось фото
+            if not existing.image_url and image_url:
+                crud_prompt.update_prompt(db, existing.id, PromptUpdate(image_url=image_url))
+                logger.debug(f"Обновлен промпт {message.id}: добавлено изображение")
+            skipped_count += 1
+            continue
+
+        # Создание промпта
+        try:
+            prompt_create = PromptCreate(
+                tg_message_id=message.id,
+                tg_channel_id=channel_id,
+                text=text,
+                is_pinned=is_pinned,
+                image_url=image_url,
+            )
+
+            crud_prompt.create_prompt(db, prompt_create)
+            created_count += 1
+            logger.debug(f"Создан промпт {'с изображением' if image_url else ''}: {message.id}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании промпта {message.id}: {e}")
+
+    return created_count, skipped_count
+
+
+async def sync_channel(limit: Optional[int] = None, offset_id: int = 0):
+    """Синхронизировать сообщения из канала"""
+    # Проверка настроек
+    if not settings.telegram_api_id or not settings.telegram_api_hash:
+        logger.error("TELEGRAM_API_ID/HASH должны быть установлены в .env")
+        return
+
+    if not settings.channel_id and not settings.channel_username:
+        logger.error("CHANNEL_ID/USERNAME должны быть установлены в .env")
+        return
+
+    # Определение идентификатора канала
+    channel_identifier = settings.channel_username
+    if settings.channel_id:
+        try:
+            channel_identifier = int(settings.channel_id)
+        except ValueError:
+            pass
+
+    # Создание клиента
+    client = TelegramClient("channel_sync_session", int(settings.telegram_api_id), settings.telegram_api_hash)
+    db = SessionLocal()
+
     try:
-        # Подключение
         await client.start(phone=settings.telegram_phone)
         logger.info("Подключение к Telegram установлено")
 
-        # Получение канала
-        try:
-            entity = await client.get_entity(channel_identifier)
-            logger.info(f"Найден канал: {entity.title} (ID: {entity.id})")
-        except Exception as e:
-            logger.error(f"Не удалось найти канал {channel_identifier}: {e}")
+        entity = await get_channel_entity(client, channel_identifier)
+        if not entity:
             return
 
-        # Получение сообщений
         logger.info(f"Загрузка сообщений из канала (лимит: {limit or 'все'})...")
 
         messages = []
@@ -193,52 +164,8 @@ async def sync_channel(limit: Optional[int] = None, offset_id: int = 0):
 
         logger.info(f"Загружено {len(messages)} сообщений")
 
-        # Обработка сообщений
-        for message in messages:
-            text = extract_text_from_message(message)
-            if not text or len(text.strip()) < 1:
-                continue
-
-            # Определение закрепленного сообщения
-            is_pinned = message.pinned if hasattr(message, "pinned") else False
-
-            # Извлечение изображения
-            image_url = await extract_image_url(client, message, entity.id)
-
-            # Проверка на существование
-            existing = crud_prompt.get_prompt_by_tg_message_id(db, message.id)
-            if existing:
-                # Обновляем существующий промпт, если нет изображения
-                if not existing.image_url and image_url:
-                    from app.schemas.prompt import PromptUpdate
-
-                    prompt_update = PromptUpdate(image_url=image_url)
-                    crud_prompt.update_prompt(db, existing.id, prompt_update)
-                    logger.debug(f"Обновлен промпт {message.id}: добавлено изображение")
-                skipped_count += 1
-                continue
-
-            # Создание промпта
-            try:
-                prompt_create = PromptCreate(
-                    tg_message_id=message.id,
-                    tg_channel_id=entity.id,
-                    text=text,
-                    is_pinned=is_pinned,
-                    image_url=image_url,
-                )
-
-                crud_prompt.create_prompt(db, prompt_create)
-                created_count += 1
-                if image_url:
-                    logger.debug(f"Создан промпт с изображением: {message.id}")
-                else:
-                    logger.debug(f"Создан промпт: {message.id}")
-
-            except Exception as e:
-                logger.error(f"Ошибка при создании промпта {message.id}: {e}")
-
-        logger.info(f"Синхронизация завершена: создано {created_count}, пропущено {skipped_count}")
+        created, skipped = await process_messages(db, client, messages, entity.id)
+        logger.info(f"Синхронизация завершена: создано {created}, пропущено {skipped}")
 
     except Exception as e:
         logger.error(f"Ошибка при синхронизации: {e}", extra={"error": str(e)})
@@ -256,7 +183,6 @@ async def main():
     parser.add_argument("--offset-id", type=int, default=0, help="ID сообщения для начала загрузки")
 
     args = parser.parse_args()
-
     await sync_channel(limit=args.limit, offset_id=args.offset_id)
 
 

@@ -11,7 +11,7 @@ select = [
     "C",  # convention
     "B",  # flake8-bugbear
 ]
-ignore = []
+ignore = ["B008"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

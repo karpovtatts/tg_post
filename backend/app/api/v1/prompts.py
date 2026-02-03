@@ -40,7 +40,7 @@ async def get_prompts(
         logger.error(f"Ошибка при получении списка промптов: {e}", extra={"error": str(e)})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка при получении списка промптов"
-        )
+        ) from e
 
 
 @router.get("/{prompt_id}", response_model=PromptResponse)
@@ -73,7 +73,9 @@ async def create_prompt(
         raise
     except Exception as e:
         logger.error(f"Ошибка при создании промпта: {e}", extra={"error": str(e)})
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка при создании промпта")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка при создании промпта"
+        ) from e
 
 
 @router.patch("/{prompt_id}", response_model=PromptResponse)

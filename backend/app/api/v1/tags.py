@@ -59,7 +59,7 @@ async def create_tag(tag: TagCreate, db: Session = Depends(get_db), current_user
         return TagResponse.model_validate(db_tag)
     except Exception as e:
         logger.error(f"Ошибка при создании тега: {e}", extra={"error": str(e)})
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка при создании тега")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка при создании тега") from e
 
 
 @router.patch("/{tag_id}", response_model=TagResponse)
