@@ -1,8 +1,10 @@
 """
 Аутентификация через Bearer token
 """
-from fastapi import Security, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from fastapi import HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from app.core.config import settings
 
 security = HTTPBearer()
@@ -11,13 +13,13 @@ security = HTTPBearer()
 def verify_api_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> bool:
     """
     Проверка API токена из заголовка Authorization
-    
+
     Args:
         credentials: Bearer токен из заголовка
-        
+
     Returns:
         bool: True если токен валиден
-        
+
     Raises:
         HTTPException: Если токен неверный или отсутствует
     """
@@ -29,26 +31,26 @@ def verify_api_token(credentials: HTTPAuthorizationCredentials = Security(securi
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="API_SECRET не настроен",
         )
-    
+
     token = credentials.credentials
-    
+
     if token != settings.api_secret:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный API токен",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return True
 
 
 def verify_bot_secret(secret: str) -> bool:
     """
     Проверка секрета для Telegram бота
-    
+
     Args:
         secret: Секрет из запроса
-        
+
     Returns:
         bool: True если секрет валиден
     """
@@ -62,4 +64,3 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
     """
     verify_api_token(credentials)
     return {"authenticated": True}
-

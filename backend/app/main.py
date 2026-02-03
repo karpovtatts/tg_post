@@ -1,22 +1,20 @@
 """
 Главный файл FastAPI приложения PromptVault
 """
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.logging_config import setup_logging, get_logger
+
 from app.api.v1 import api_router
-from app.database import engine, Base
+from app.core.config import settings
+from app.core.logging_config import get_logger, setup_logging
+from app.database import Base, engine
 
 # Настройка логирования
 setup_logging(level="INFO" if settings.environment == "production" else "DEBUG")
 logger = get_logger(__name__)
 
-app = FastAPI(
-    title="PromptVault API",
-    description="API для управления промптами из Telegram канала",
-    version="1.0.0"
-)
+app = FastAPI(title="PromptVault API", description="API для управления промптами из Telegram канала", version="1.0.0")
 
 # Настройка CORS
 app.add_middleware(
@@ -39,11 +37,12 @@ async def startup_event():
     if settings.environment == "development":
         Base.metadata.create_all(bind=engine)
         logger.info("Таблицы БД созданы (development режим)")
-        
+
         # Инициализация FTS5
         try:
             from app.database import SessionLocal
             from app.search.fts5 import init_fts5_table
+
             db = SessionLocal()
             init_fts5_table(db)
             db.close()
@@ -61,14 +60,10 @@ async def shutdown_event():
 @app.get("/")
 async def root():
     """Корневой эндпоинт для проверки работы API"""
-    return {
-        "message": "PromptVault API работает",
-        "version": "1.0.0"
-    }
+    return {"message": "PromptVault API работает", "version": "1.0.0"}
 
 
 @app.get("/health")
 async def health():
     """Эндпоинт для проверки здоровья сервиса"""
     return {"status": "ok"}
-

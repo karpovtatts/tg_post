@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SearchBar } from './components/SearchBar';
 import { TagFilter } from './components/TagFilter';
+import { TagCloud } from './components/TagCloud';
 import { PromptList } from './components/PromptList';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { Button } from './components/ui/Button';
 import { useAppStore } from './lib/store';
+import { useState } from 'react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,7 +18,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { showPinnedOnly, setShowPinnedOnly, clearFilters } = useAppStore();
+  const { showPinnedOnly, setShowPinnedOnly, clearFilters, compactMode, setCompactMode } = useAppStore();
+  const [showTagCloud, setShowTagCloud] = useState(true);
   
   return (
     <QueryClientProvider client={queryClient}>
@@ -44,6 +47,23 @@ function App() {
               </Button>
               
               <Button
+                variant={compactMode ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => setCompactMode(!compactMode)}
+                title={compactMode ? 'Переключить на обычный режим' : 'Переключить на компактный режим'}
+              >
+                {compactMode ? '📋' : '📄'} {compactMode ? 'Компактный' : 'Обычный'}
+              </Button>
+              
+              <Button
+                variant={showTagCloud ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => setShowTagCloud(!showTagCloud)}
+              >
+                {showTagCloud ? '☁️' : '🏷️'} {showTagCloud ? 'Облако' : 'Список'}
+              </Button>
+              
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
@@ -52,7 +72,7 @@ function App() {
               </Button>
             </div>
             
-            <TagFilter />
+            {showTagCloud ? <TagCloud /> : <TagFilter />}
           </div>
           
           {/* Список промптов */}

@@ -103,3 +103,6 @@ PROJECT_QUALITY_REPORT.md
 # DEPLOYMENT_NO_DOCKER.example.md - публичная версия
 # ecosystem.config.example.js - публичная версия
 
+
+# Telethon session
+*.session

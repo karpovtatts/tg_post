@@ -2,17 +2,14 @@
 from app.schemas.prompt import (
     PromptBase,
     PromptCreate,
-    PromptUpdate,
-    PromptResponse,
     PromptListResponse,
-    TagResponse as PromptTagResponse
+    PromptResponse,
+    PromptUpdate,
 )
-from app.schemas.tag import (
-    TagBase,
-    TagCreate,
-    TagUpdate,
-    TagResponse
+from app.schemas.prompt import (
+    TagResponse as PromptTagResponse,
 )
+from app.schemas.tag import TagBase, TagCreate, TagResponse, TagUpdate
 
 __all__ = [
     "PromptBase",
